@@ -4,6 +4,8 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
+	(r'^$', 'a2a.qa.views.index'),
+
 	(r'^question/', 'a2a.qa.views.question'),
 
 	(r'^admin/doc/', include('django.contrib.admindocs.urls')),

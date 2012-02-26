@@ -5,6 +5,9 @@ from django import forms
 from django.forms import widgets
 from django.template import RequestContext
 
+def index( request ):
+	return render_to_response( 'index.html', {}, context_instance = RequestContext(request) )
+
 def question( request ):
 	if not request.user.is_authenticated():
 		return HttpResponseRedirect( '/accounts/signin/?next=%s' % request.path )
