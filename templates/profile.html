@@ -1,0 +1,20 @@
+{% extends "userena/profile_detail.html" %}
+{% load thumbnail %}
+{% block content %}
+{{ block.super }}
+
+<h3>Answers</h3>
+
+{% for answer in profile.user.answer_set.all %}
+<div class="answer">
+	<a href="{{ MEDIA_URL }}{{ answer.artwork.image }}"><img src="{% thumbnail answer.artwork.image 60x0 %}" style="thumb"/></a>
+	<strong>{{ answer.question.question }}</strong>
+	<ul>
+		{% for response in answer.responses.all %}
+		<li>{{ response.response }}</li>
+		{% endfor %}
+	</ul>
+</div>
+{% endfor %}
+
+{% endblock %}

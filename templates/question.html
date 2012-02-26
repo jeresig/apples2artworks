@@ -1,0 +1,10 @@
+<div><img src="{{ artwork.image.url }}"/></div>
+
+<h3>{{ question.question }}</h3>
+
+<form action="" method="POST">{% csrf_token %}
+<input type="hidden" name="id_artwork" value="{{ artwork.id }}"/>
+<input type="hidden" name="id_question" value="{{ question.id }}"/>
+{{ form.as_p }}
+<input type="submit" value="Submit" />
+</form>
