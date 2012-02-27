@@ -3,6 +3,14 @@
 {% block content %}
 {{ block.super }}
 
+<h3>Levels</h3>
+
+{% for level in profile.user.level_set.all %}
+<div class="level">
+	<strong>{{ level.question.short_name }}:</strong> Level {{ level.level }} ({{ level.answered }} question{{ level.answered|pluralize }} answered)
+</div>
+{% endfor %}
+
 <h3>Answers</h3>
 
 {% for answer in profile.user.answer_set.all %}

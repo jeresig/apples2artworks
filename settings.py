@@ -131,3 +131,5 @@ USERENA_PROFILE_DETAIL_TEMPLATE = 'profile.html'
 LOGIN_REDIRECT_URL = '/accounts/%(username)s/'
 LOGIN_URL = '/accounts/signin/'
 LOGOUT_URL = '/accounts/signout/'
+
+LEVEL_SIZE = 5
