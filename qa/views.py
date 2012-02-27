@@ -50,7 +50,7 @@ def question( request ):
 			return HttpResponseRedirect( '/question/' )
 
 	# Find an artwork/question pair for the user to comment on
-	( artwork, question ) = find_question( user )
+	( artwork, question, hard ) = find_question( user )
 	responses = question.response_set.all()
 
 	form = AnswerForm()
@@ -65,6 +65,7 @@ def question( request ):
 	return render_to_response( 'question.html', {
 		'question': question,
 		'artwork': artwork,
+		'hard': hard,
 		'form': form
 	}, context_instance = RequestContext(request) )
 
@@ -152,7 +153,7 @@ def find_question( user ):
 			profile.last_seen_question = question
 			profile.save()
 
-			return ( artwork, question )
+			return ( artwork, question, hard )
 
 	# No suitable artwork/question pair was found
-	return ( Null, Null )
+	return ( None, None, false )
