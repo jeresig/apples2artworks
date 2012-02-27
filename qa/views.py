@@ -117,7 +117,7 @@ def find_question( user ):
 
 		# Show hard question
 		if pos == LEVEL_SIZE - 1:
-			artwork = level.artwork
+			artwork = level.adv_artwork
 			hard = True
 
 		# Pick a filler artwork
