@@ -1,10 +1,21 @@
 <div><img src="{{ artwork.image.url }}"/></div>
 
-<h3>{{ question.question }}</h3>
+{% autoescape off %}
+
+{% if hard %}
+	<h3>{{ question.advanced_question }}</h3>
+	<div class="tip">{{ question.advanced_tip }}</div>
+{% else %}
+	<h3>{{ question.question }}</h3>
+	<div class="tip">{{ question.tip }}</div>
+{% endif %}
+
+{% endautoescape %}
 
 <form action="" method="POST">{% csrf_token %}
 <input type="hidden" name="id_artwork" value="{{ artwork.id }}"/>
 <input type="hidden" name="id_question" value="{{ question.id }}"/>
+<input type="hidden" name="hard" value="{{ hard }}"/>
 {{ form.as_p }}
 <input type="submit" value="Submit" />
 </form>

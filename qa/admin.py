@@ -27,6 +27,15 @@ admin.site.register( Question, QuestionAdmin )
 
 admin.site.register( Answer )
 
+class ChallengeAdmin( admin.ModelAdmin ):
+	fieldsets = [
+		(None, {'fields': ['short_name', 'question', 'tip', 'random']}),
+		('Media', {'fields': ['video_url', 'logo', 'badge_small', 'badge_large']})
+	]
+
+admin.site.register( Challenge, ChallengeAdmin )
+admin.site.register( ChallengeAnswer )
+
 class LevelInline( admin.TabularInline ):
 	model = Level
 	fk_name = 'user'

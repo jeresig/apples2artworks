@@ -16,8 +16,8 @@ class Question(models.Model):
 	question = models.CharField( max_length = 255 )
 	tip = tinymce_models.HTMLField( default = '', blank = True )
 	type = models.CharField( max_length = 20, choices = TYPE_CHOICES, default = 'radio' )
-	video_url = models.CharField( max_length = 255, blank = True )
 
+	video_url = models.CharField( max_length = 255, blank = True )
 	logo = models.ImageField( upload_to = 'logos', null = True, blank = True )
 	badge_small = models.ImageField( upload_to = 'badges', null = True, blank = True )
 	badge_large = models.ImageField( upload_to = 'badges', null = True, blank = True )
@@ -67,10 +67,12 @@ class Answer(models.Model):
 	artwork = models.ForeignKey( Artwork )
 	question = models.ForeignKey( Question )
 	responses = models.ManyToManyField( Response )
+	data = models.CharField( max_length = 255, default = '' )
+	hidden = models.BooleanField( "Hidden Answer", default = False )
 	answered_date = models.DateTimeField( auto_now_add = True )
 
 	def __unicode__(self):
-		return u'User %s response to %s' % ( self.user, self.artwork )
+		return u'User %s answer to %s' % ( self.user, self.artwork )
 
 class AnswerForm( forms.ModelForm ):
 	responses = forms.ModelMultipleChoiceField(
@@ -81,7 +83,45 @@ class AnswerForm( forms.ModelForm ):
 
 	class Meta:
 		model = Answer
-		exclude = [ 'user', 'artwork', 'question', 'answered_date' ]
+		fields = [ 'responses' ]
+
+class Challenge(models.Model):
+	short_name = models.CharField( max_length = 20 )
+	question = models.CharField( max_length = 255 )
+	tip = tinymce_models.HTMLField( default = '', blank = True )
+	random = models.BooleanField( "Comes up randomly", default = True )
+
+	video_url = models.CharField( max_length = 255, blank = True )
+	logo = models.ImageField( upload_to = 'logos', null = True, blank = True )
+	badge_small = models.ImageField( upload_to = 'badges', null = True, blank = True )
+	badge_large = models.ImageField( upload_to = 'badges', null = True, blank = True )
+
+	class Meta:
+		verbose_name = 'Advanced Question'
+		verbose_name_plural = 'Advanced Questions'
+
+	def __unicode__(self):
+		return self.short_name
+
+class ChallengeAnswer(models.Model):
+	user = models.ForeignKey( User )
+	challenge = models.ForeignKey( Challenge )
+	answer = models.ForeignKey( Answer )
+	other_answer = models.ForeignKey( Answer, null = True, blank = True, related_name = 'other_answer_set' )
+	response = models.TextField()
+	response_date = models.DateTimeField( auto_now_add = True )
+
+	class Meta:
+		verbose_name = 'Advanced Answer'
+		verbose_name_plural = 'Advanced Answers'
+
+	def __unicode__(self):
+		return u'User %s response to %s' % ( self.user, self.answer )
+
+class AdvAnswerForm( forms.ModelForm ):
+	class Meta:
+		model = ChallengeAnswer
+		fields = [ 'response' ]
 
 class Level(models.Model):
 	user = models.ForeignKey( User )

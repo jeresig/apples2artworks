@@ -1,0 +1,25 @@
+<div class='image'>
+	<img src="{{ artwork.image.url }}"/>
+	<div class='details'><span class='title'>{{ artwork.title }}</span> by <span class='artist'>{{ artwork.artist }}</span></div>
+</div>
+
+{% autoescape off %}
+
+{% if challenge.id == 1 %}
+	<h3>{{ question.advanced_question }}</h3>
+	<div class="tip">{{ question.advanced_tip }}</div>
+{% else %}
+	<h3>{{ challenge.question }}</h3>
+	<div class="tip">{{ challenge.tip }}</div>
+{% endif %}
+
+{% endautoescape %}
+
+<form action="/adv_question/" method="POST">{% csrf_token %}
+<input type="hidden" name="id_answer" value="{{ answer.id }}"/>
+<input type="hidden" name="id_challenge" value="{{ challenge.id }}"/>
+{% if response %}<input type="hidden" name="id_response" value="{{ response.id }}"/>{% endif %}
+{% if other_answer %}<input type="hidden" name="id_other_answer" value="{{ other_answer.id }}"/>{% endif %}
+{{ form.as_p }}
+<input type="submit" value="Submit" />
+</form>

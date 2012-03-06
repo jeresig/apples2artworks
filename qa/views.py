@@ -11,6 +11,41 @@ from a2a.settings import LEVEL_SIZE
 def index( request ):
 	return render_to_response( 'index.html', {}, context_instance = RequestContext(request) )
 
+def adv_question( request ):
+	user = request.user
+
+	# The user needs to be signed in in order to answer a question
+	if not user.is_authenticated():
+		return HttpResponseRedirect( '/accounts/signin/?next=/question/' )
+
+	if request.method == "POST":
+		form = AdvAnswerForm( request.POST )
+
+		if form.is_valid():
+			# Need to save the answer now
+			answer = form.save( commit = False )
+
+			answer.user = user
+			answer.challenge = Challenge.objects.get( id = int(request.POST['id_challenge']) )
+			answer.answer = Answer.objects.get( id = int(request.POST['id_answer']) )
+
+			# For type #2 (Challenge)
+			if 'id_other_answer' in request.POST:
+				answer.other_answer = Answer.objects.get( id = int(request.POST['id_other_answer']) )
+
+			# For type #3 (Comparison)
+			if 'id_artwork' in request.POST and 'id_response' in request.POST:
+				artwork = Artwork.objects.get( id = int(request.POST['id_artwork']) )
+				response = Response.objects.get( id = int(request.POST['id_response']) )
+				other_answer = Answer( user = request.user, question = challenge.question, artwork = artwork, responses = response, hidden = True )
+				other_answer.save()
+				answer.other_answer = other_answer
+
+			answer.save()
+
+			# Let the user answer another question
+			return HttpResponseRedirect( '/question/' )
+
 def question( request ):
 	user = request.user
 
@@ -50,35 +85,84 @@ def question( request ):
 			return HttpResponseRedirect( '/question/' )
 
 	# Find an artwork/question pair for the user to comment on
-	( artwork, question, hard ) = find_question( user )
-	responses = question.response_set.all()
+	match = find_question( user )
 
-	form = AnswerForm()
+	if match['question'] == None or match['artwork'] == None:
+		# TODO: Bail out with an error message?
+		return HttpResponseRedirect( '/' )
 
-	# Some questions only have one selection
-	if question.type == 'radio':
-		form.fields["responses"].widget = widgets.RadioSelect()
+	if match['challenge'] == None:
+		match['form'] = AnswerForm()
 
-	# Reduce the responses to just those on the question
-	form.fields["responses"].queryset = responses
+		# Some questions only have one selection
+		if match['question'].type == 'radio':
+			match['form'].fields['responses'].widget = widgets.RadioSelect()
 
-	return render_to_response( 'question.html', {
-		'question': question,
-		'artwork': artwork,
-		'hard': hard,
-		'form': form
-	}, context_instance = RequestContext(request) )
+		# Reduce the responses to just those on the question
+		match['form'].fields['responses'].queryset = match['question'].response_set.all()
+
+		return render_to_response( 'question.html', match,
+			context_instance = RequestContext(request) )
+	else:
+		match['form'] = AdvAnswerForm()
+
+		return render_to_response( 'adv_question.html', match,
+			context_instance = RequestContext(request) )
 
 def find_question( user ):
+	ret = {
+		'question': None,
+		'artwork': None,
+		'answer': None,
+		'challenge': None
+	}
+
 	profile = user.get_profile()
 	questions = Question.objects.all()
 
 	# Get the 3 most recent answers
 	recent_answers = list( user.answer_set.order_by("-answered_date")[:3] )
 
-	# Exclude the most recently answered question
 	if len( recent_answers ):
-		questions = questions.exclude( id = recent_answers[0].question.id )
+		answer = recent_answers[0]
+
+		# Exclude the most recently answered question
+		questions = questions.exclude( id = answer.question.id )
+
+		# Sometimes we want to show an advanced question
+		if random.random() < 0.5 and answer.question == profile.last_seen_question and answer.artwork == profile.last_seen_artwork:
+			# Don't do the advanced question if we've already done one for this answer
+			try:
+				ChallengeAnswer.objects.get( answer = answer, user = user )
+
+			except ObjectDoesNotExist:
+				# Use the same question and artwork
+				challenges = Challenge.objects.filter( random = True ).order_by( '?' )
+
+				ret['question'] = answer.question
+				ret['artwork'] = answer.artwork
+				ret['answer'] = answer
+
+				for challenge in challenges:
+					# If it's a challenge, pass along other answer
+					if challenge.id == 2:
+						diff_responses = answer.question.response_set.exclude( pk__in = answer.responses.values_list('pk', flat = True) )
+						other = Answer.objects.filter( responses__in = diff_responses, question = ret['question'], artwork = ret['artwork'], hidden = False ).exclude( user = user ).order_by('?')
+
+						if len( other ) > 0:
+							ret['challenge'] = challenge
+							ret['other_answer'] = other[0]
+							ret['responses'] = ret['other_answer'].responses.exclude( pk__in = answer.responses.values_list('pk', flat = True) )
+							return ret
+
+					# If it's a image match, pick a specific response
+					elif challenge.id == 3:
+						responses = list( ret['answer'].responses.all() )
+						random.shuffle( responses )
+
+						ret['challenge'] = challenge
+						ret['response'] = responses[0]
+						return ret
 
 	# Don't show the most recently shown question
 	if profile.last_seen_question:
@@ -99,6 +183,7 @@ def find_question( user ):
 	# We loop here so that if a question has been
 	# exhausted we fall back to other options
 	for question in questions:
+		ret['question'] = question
 		level = None
 
 		# Get the level for the user, for this question
@@ -112,19 +197,18 @@ def find_question( user ):
 			level.save()
 
 		pos = level.answered % LEVEL_SIZE
-		artwork = None
-		hard = False
 
 		# Show hard question
 		if pos == LEVEL_SIZE - 1:
-			artwork = level.adv_artwork
-			hard = True
+			ret['artwork'] = level.adv_artwork
+			ret['answer'] = Answer.objects.get( user = user, artwork = level.adv_artwork, question = question )
+			ret['challenge'] = Challenge.objects.get( id = 1 )
 
 		# Pick a filler artwork
 		# or a new good artwork
 		else:
 			# Prune out already-answered artworks
-			old_answers = Answer.objects.filter( user = user, question = question )
+			old_answers = Answer.objects.filter( user = user, question = question, hidden = False )
 			bad_images = [ a.artwork.id for a in old_answers ]
 			bad_images.extend( recent_images )
 
@@ -141,19 +225,17 @@ def find_question( user ):
 
 			# Grab a random artwork
 			try:
-				artwork = artworks.order_by( '?' )[0]
+				ret['artwork'] = artworks.order_by( '?' )[0]
 
 			# No artwork found
 			except IndexError:
-				artwork = None
+				None
 
 		# Pick this artwork and question
-		if artwork:
-			profile.last_seen_artwork = artwork
-			profile.last_seen_question = question
+		if ret['artwork'] != None:
+			profile.last_seen_artwork = ret['artwork']
+			profile.last_seen_question = ret['question']
 			profile.save()
+			break
 
-			return ( artwork, question, hard )
-
-	# No suitable artwork/question pair was found
-	return ( None, None, false )
+	return ret
